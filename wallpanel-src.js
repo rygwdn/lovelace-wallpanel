@@ -2754,6 +2754,11 @@ function initWallpanel() {
 			return url;
 		}
 
+		prefetchedMedia = {
+			url: null,
+			blob: null,
+		}
+
 		async updateMediaFromUrl(element, url, mediaType = null, headers = null, useFetch = false) {
 			// Setting the src attribute works better than fetch because cross-origin requests aren't blocked
 			const loadMediaWithElement = async (elem) => {
@@ -2783,18 +2788,24 @@ function initWallpanel() {
 					elem.onerror = onError;
 				});
 				if (useFetch) {
-					headers = headers || {};
-					const response = await fetch(url, { headers: headers });
-					logger.debug("Got respone", response);
-					if (!response.ok) {
-						throw new Error(`Failed to load ${elem.tagName} "${url}": ${response}`);
+					let blob;
+					if (this.prefetchedMedia.url == url && this.prefetchedMedia.blob) {
+						blob = this.prefetchedMedia.blob;
+					} else {
+						headers = headers || {};
+						const response = await fetch(url, { headers: headers });
+						logger.debug("Got respone", response);
+						if (!response.ok) {
+							throw new Error(`Failed to load ${elem.tagName} "${url}": ${response}`);
+						}
+						blob = await response.blob();
 					}
+
 					// The object URL created by URL.createObjectURL() must be released
 					// using URL.revokeObjectURL() to free the associated memory again.
 					if (typeof elem.src === "string" && elem.src.startsWith("blob:")) {
 						URL.revokeObjectURL(elem.src);
 					}
-					const blob = await response.blob();
 					elem.src = window.URL.createObjectURL(blob);
 				} else {
 					elem.src = url;
@@ -2878,13 +2889,41 @@ function initWallpanel() {
 		async updateMediaFromImmichAPI(element) {
 			const mediaInfo = mediaInfoCache.get(element.mediaUrl) || {};
 			const mediaType = mediaInfo["mediaType"] == "video" ? "video" : "img";
-			return await this.updateMediaFromUrl(
+			const headers = { "x-api-key": config.immich_api_key };
+
+			const result = await this.updateMediaFromUrl(
 				element,
 				element.mediaUrl,
 				mediaType,
-				{ "x-api-key": config.immich_api_key },
+				headers,
 				true
 			);
+
+			this.prefetchedMedia.url = null;
+			this.prefetchedMedia.blob = null;
+
+			setTimeout(async () => {
+				const nextUrl = this.getNextMediaURL(false);
+				if (!nextUrl || this.prefetchedMedia.url) {
+					return;
+				}
+
+				this.prefetchedMedia.url = nextUrl;
+				logger.debug("Prefetching next media");
+				await this.defer();
+				const response = await fetch(nextUrl, { headers: headers });
+				if (!response.ok) {
+					logger.error("Failed to prefetch next media", response);
+					return;
+				}
+
+				const blob = await response.blob();
+				if (this.prefetchedMedia.url == nextUrl) {
+					this.prefetchedMedia.blob = blob;
+				}
+			}, config.display_time * 1000 / 2);
+
+			return result;
 		}
 
 		async updateMediaFromMediaEntity(element) {
