@@ -1981,17 +1981,10 @@ function initWallpanel() {
 					{ capture: true }
 				);
 			});
-			window.addEventListener("resize", () => {
-				const width = this.screensaverContainer.clientWidth;
-				const height = this.screensaverContainer.clientHeight;
-				if (wp.screensaverRunning() && (wp.currentWidth != width || wp.currentHeight != height)) {
-					logger.debug(`Size changed from ${wp.currentWidth}x${wp.currentHeight} to ${width}x${height}`);
-					wp.currentWidth = width;
-					wp.currentHeight = height;
-					wp.updateShadowStyle();
-					wp.setMediaDimensions();
-				}
-			});
+
+			const screensaverResizeObserver = new ResizeObserver(() => this.updateCurrentSize());
+			screensaverResizeObserver.observe(this.screensaverContainer);
+
 			window.addEventListener("hass-more-info", () => {
 				if (wp.screensaverRunning()) {
 					wp.moreInfoDialogToForeground();
@@ -2007,6 +2000,22 @@ function initWallpanel() {
 
 			// Correct possibly incorrect entity state
 			this.setScreensaverEntityState();
+		}
+
+		updateCurrentSize(force = false) {
+			if (!this.screensaverRunning() && !force) {
+				return;
+			}
+			const width = this.screensaverContainer.clientWidth;
+			const height = this.screensaverContainer.clientHeight;
+
+			if (this.currentWidth != width || this.currentHeight != height || force) {
+				logger.debug(`Size changed from ${this.currentWidth}x${this.currentHeight} to ${width}x${height}`);
+				this.currentWidth = width;
+				this.currentHeight = height;
+				this.updateShadowStyle();
+				this.setMediaDimensions();
+			}
 		}
 
 		reconfigure(oldConfig) {
@@ -3407,9 +3416,8 @@ function initWallpanel() {
 
 			this.screensaverStartedAt = Date.now();
 			this.screensaverStoppedAt = null;
-			this.currentWidth = this.screensaverContainer.clientWidth;
-			this.currentHeight = this.screensaverContainer.clientHeight;
 
+			this.updateCurrentSize(true);
 			this.setDefaultStyle();
 			updateConfig();
 
