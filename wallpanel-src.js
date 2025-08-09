@@ -2498,8 +2498,7 @@ function initWallpanel() {
 				throw new Error("immich_api_key not configured");
 			}
 			const wp = this;
-			const screenOrientation =
-				this.currentWidth >= this.currentHeight ? "landscape" : "portrait";
+			const screenOrientation = this.currentWidth >= this.currentHeight ? "landscape" : "portrait";
 			let exclude_media_orientation = config.exclude_media_orientation;
 			if (exclude_media_orientation == "auto") {
 				exclude_media_orientation = screenOrientation == "landscape" ? "portrait" : "landscape";
@@ -3196,6 +3195,16 @@ function initWallpanel() {
 			});
 		}
 
+		defer() {
+			return new Promise((resolve) => {
+				if (window.requestIdleCallback) {
+					window.requestIdleCallback(resolve, { timeout: 200 });
+				} else {
+					setTimeout(resolve, 10);
+				}
+			});
+		}
+
 		async switchActiveMedia(eventType) {
 			if (this.afterFadeoutTimer) {
 				clearTimeout(this.afterFadeoutTimer);
@@ -3245,6 +3254,10 @@ function initWallpanel() {
 			if (!element) {
 				return;
 			}
+
+			// wait for an idle frame before actually switching the media
+			await this.defer();
+
 			this._switchActiveMedia(element, crossfadeMillis);
 		}
 
@@ -3278,12 +3291,13 @@ function initWallpanel() {
 				newMedia.style.pointerEvents = "none";
 			}
 
-			this.setMediaDataInfo();
 			this.setMediaDimensions();
-			this.setImageURLEntityState();
 			this.startPlayingActiveMedia();
 			this.restartProgressBarAnimation();
 			this.restartKenBurnsEffect();
+
+			this.defer().then(() => this.setMediaDataInfo());
+			this.defer().then(() => this.setImageURLEntityState());
 
 			if (curMedia.tagName.toLowerCase() === "video") {
 				this.afterFadeoutTimer = setTimeout(function () {
