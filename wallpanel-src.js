@@ -2499,7 +2499,7 @@ function initWallpanel() {
 			}
 			const wp = this;
 			const screenOrientation =
-				this.screensaverContainer.clientWidth >= this.screensaverContainer.clientHeight ? "landscape" : "portrait";
+				this.currentWidth >= this.currentHeight ? "landscape" : "portrait";
 			let exclude_media_orientation = config.exclude_media_orientation;
 			if (exclude_media_orientation == "auto") {
 				exclude_media_orientation = screenOrientation == "landscape" ? "portrait" : "landscape";
@@ -2744,8 +2744,8 @@ function initWallpanel() {
 		}
 
 		fillPlaceholders(url) {
-			const width = this.screensaverContainer.clientWidth;
-			const height = this.screensaverContainer.clientHeight;
+			const width = this.currentWidth;
+			const height = this.currentHeight;
 			const timestamp_ms = Date.now();
 			const timestamp = Math.floor(timestamp_ms / 1000);
 			url = url.replace(/\${width}/g, width);
@@ -3089,8 +3089,8 @@ function initWallpanel() {
 			activeElem.style.left = "0px";
 			activeElem.style.top = "0px";
 			activeElem.style.objectFit = mediaFit;
-			const availWidth = this.screensaverContainer.clientWidth;
-			const availHeight = this.screensaverContainer.clientHeight;
+			const availWidth = this.currentWidth;
+			const availHeight = this.currentHeight;
 			let setHeight = availHeight;
 			let setWidth = availWidth;
 			let hiddenHeight = 0;
@@ -3692,10 +3692,10 @@ function initWallpanel() {
 				let right = 0.0;
 				let bottom = 0.0;
 				if (x) {
-					right = (this.screensaverContainer.clientWidth - x) / this.screensaverContainer.clientWidth;
+					right = (this.currentWidth - x) / this.currentWidth;
 				}
 				if (y) {
-					bottom = (this.screensaverContainer.clientHeight - y) / this.screensaverContainer.clientHeight;
+					bottom = (this.currentHeight - y) / this.currentHeight;
 				}
 				if (config.touch_zone_size_next_image > 0 && right <= config.touch_zone_size_next_image / 100) {
 					if (isClick) {
